@@ -1,0 +1,67 @@
+---
+title: "PML Course Project"
+author: "Sibsambhu Kar"
+date: "Saturday, March 21, 2015"
+output: html_document
+---
+*Objectives:*
+As a part of Practical Machine Learning Course our objective here is to analyze personal activity data of few people to predict their exercise pattern. The data were collected using different devices when they performed specified exercise.The detail about the data can be found here (http://groupware.les.inf.puc-rio.br/har).
+
+*Loading & Pre-processing of Data*
+
+- Loading of data (both training and testing data)
+- Dividing training data into training (75%) and cross-validation (25%) components
+- removing sparse data (assuming less influence of sparse data on predicting the model)
+- Removing other non-numeric data which are used for basic record or information
+
+```{r}
+library(randomForest)
+library(caret,quietly=TRUE)
+# Load data
+data_train_all<-read.csv(file="pml-training.csv",na.strings=c('NA','#DIV/0!',''))
+data_test<-read.csv(file="pml-testing.csv",na.strings=c('NA','#DIV/0!',''))
+dim(data_train_all)
+
+# Remove sparse data
+nonsparse_col<-colnames(data_train_all)
+nonsparse_col<-colnames(data_train_all[colSums(is.na(data_train_all))==0])
+nonsparse_col<-nonsparse_col[-c(1:7)]
+
+# create training & cross validation data from training samples
+set.seed(1000)
+train_ind <- createDataPartition(y=data_train_all$classe, p=0.75, list=FALSE)
+data_train <- data_train_all[train_ind,nonsparse_col]
+data_crossval <- data_train_all[-train_ind,nonsparse_col]
+data_train<-data_train[seq(1,15000,by=10),]
+data_crossval<-data_crossval[seq(1,3900,by=10),]
+
+```
+
+*Fit a model based on training data*
+
+- Model type: Random Forest (selected to get high accuracy)
+
+```{r}
+model_randf<-train(classe ~ .,data=data_train,method='rf')
+
+```
+
+* Testing of model on cross validation data*
+
+- predict testing data
+- Analyze confusion matrix
+```{r}
+pred_randf <- predict(model_randf,data_crossval)
+confmat <- confusionMatrix(pred_randf,data_crossval$classe)
+confmat
+```
+The confusion matrix shows the accuracy of the predicted model (overall and at each class level) 
+
+* Predicting test class output*
+```{r}
+addclass_col <- length(colnames(data_test[]))
+colnames(data_test)[addclass_col] <- 'classe'
+test_randf <- predict(model_randf,data_test[,nonsparse_col])
+test_randf
+```
+
